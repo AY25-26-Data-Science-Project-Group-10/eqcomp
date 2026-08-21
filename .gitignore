@@ -1,0 +1,7 @@
+__pycache__/
+tmp
+.vscode
+.codex
+eqcomp/
+
+data/waveforms.hdf5
