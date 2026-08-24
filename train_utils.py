@@ -43,6 +43,17 @@ TRAIN_SPLIT = 0.80
 TEST_SPLIT = 0.10
 
 
+def preprocess_data(config, train_dataset, dev_dataset, test_dataset):
+    train_generator = sbg.GenericGenerator(train_dataset)
+    dev_generator = sbg.GenericGenerator(dev_dataset)
+    test_generator = sbg.GenericGenerator(test_dataset)
+
+    train_generator.add_augmentations(config.get_augs())
+    dev_generator.add_augmentations(config.get_augs())
+    test_generator.add_augmentations(config.get_augs())
+    
+    return train_generator, dev_generator, test_generator
+
 def get_true_pick(sample):
     return int(np.argmax(sample["y"]))  # true pick time from probability trace
 
@@ -51,14 +62,14 @@ def get_predicted_pick(prob_trace, threshold=0.1):
     peak_val = prob_trace[peak_idx]
     return peak_idx if peak_val > threshold else None
 
-def evaluate_model(model, test_generator, test, model_name, mae_thresholds=[0.2, 0.5, 1.0]):
+def evaluate_model(model, test_generator, test_dataset, model_name, mae_thresholds=[0.2, 0.5, 1.0]):
     results = []
     model.eval()
 
     with torch.no_grad():
         for i in tqdm(range(len(test_generator))):
             sample = test_generator[i]
-            meta = test.get_sample(i)[1]
+            meta = test_dataset.get_sample(i)[1]
 
             # Ground truth event type
             event_type = meta["event_type"]
@@ -154,7 +165,7 @@ def aggregate_metrics(results):
         f1 = f1_score(y_true, y_pred, zero_division=0)
         coverage = group["Predicted"].sum() / len(group)
         
-        tp_errors = errors[(y_true == 1) & (y_pred == 1)] # Calculate MAE across TPs only
+        tp_errors = errors[(y_true == 1) & (y_pred == 1)] # Calculate MAE across TPs only   
         mae = np.nan if len(tp_errors) == 0 else np.nanmean(tp_errors)
 
         fp = np.sum((y_true == 0) & (y_pred == 1))
@@ -268,4 +279,64 @@ def compare_preds(trained_model, org_model, sample):
     axs[3].text(0.05, 0.1, "original model pred", transform=axs[3].transAxes, ha="left", va="top")
     for ax in axs: ax.legend()
     
+    
+def generate_markdown(df_metrics):
+    metric_cols_max = ["Precision", "Recall", "F1", "Coverage"]
+    metric_cols_min = ["MAE"]
+
+    df_md = df_metrics.copy()
+
+    # 1. Round all metric columns to 3dp using pandas
+    all_metric_cols = metric_cols_max + metric_cols_min
+    df_md[all_metric_cols] = df_md[all_metric_cols].round(3)
+
+    # 2. Compute rounded maxima and minima
+    rounded_max = {col: df_md[col].max() for col in metric_cols_max}
+    rounded_min = {col: df_md[col].min() for col in metric_cols_min}
+    
+    # 3. Convert all metric columns to formatted strings (3dp)
+    # Special rule for noise: ONLY Coverage is bolded, and only the minimum
+    if (df_metrics["Event Type"] == "noise").any():
+        cov_min = df_md["Coverage"].astype(float).min()
+        df_md["Coverage"] = df_md["Coverage"].apply(
+            lambda x: f"**{x}**" if float(x) == cov_min else x
+        )
+        return df_md.to_markdown(index=False)
+    
+    for col in metric_cols_max + metric_cols_min:
+        df_md[col] = df_md[col].apply(lambda x: f"{x:.3f}")
+
+    # 4. Bold maxima
+    for col in metric_cols_max:
+        max_val = rounded_max[col]
+        if max_val > 0:
+            df_md[col] = df_md[col].apply(
+                lambda x: f"**{x}**" if float(x) == max_val else x
+            )
+
+    # 5. Bold minima
+    for col in metric_cols_min:
+        min_val = rounded_min[col]
+        df_md[col] = df_md[col].apply(
+            lambda x: f"**{x}**" if float(x) == min_val else x
+        )
+
+    return df_md.to_markdown(index=False)
+
+
+def generate_metric_report(df_metrics):
+    event_phase_pairs = [
+    ("earthquakes", "P"),
+    ("earthquakes", "S"),
+    ("explosions", "P"),
+    ("explosions", "S"),
+    ("noise", "P"),
+    ("noise", "S"),
+    ]
+
+    for event, phase in event_phase_pairs:
+        subset = df_metrics[(df_metrics["Event Type"] == event) &
+                        (df_metrics["Phase"] == phase)]
+        print(f"## {event.title()} {phase}-phase picking")
+        print(generate_markdown(subset), end="\n\n\n")
     
