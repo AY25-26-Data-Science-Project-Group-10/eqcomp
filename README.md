@@ -36,7 +36,8 @@ eqcomp/
     │
     ├── model_utils.py        # Models bundled with their training configurations
     ├── train_utils.py        # Utility functions for fine-tuning and evaluation
-    ├── data/                 # Finnish dataset
+    ├── data/                 # Finnish dataset: metadata.csv, waveforms.hdf5 (too big to upload for now)
+    ├── benchmarks/           # Model comparison reports
     ├── experiments/          # Model, metadata, metrics from finetuning experiments 
     └── README.md           
 ```
@@ -115,6 +116,6 @@ The Finnish dataset uses 6000 samples per waveform, so you must ensure: the mode
 1. ~~Implement/copy paste loss functions~~
 2. Visualisation of dataset and prediction results
 3. ~~Compare prediction results of fine-tuned vs non fine-tuned models~~
-4. Downsample high-frequency traces to 100hz to increase dataset size
+4. ~~Downsample high-frequency traces to 100hz to increase dataset size~~
 5. Configure GPU training
 6. Hyperparameter tuning
