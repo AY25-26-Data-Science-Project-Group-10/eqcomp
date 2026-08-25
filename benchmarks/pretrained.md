@@ -110,5 +110,5 @@ metrics = tutils.aggregate_metrics(results)
 tutils.generate_metric_report(metrics)
 
 # Plot pick distributions
-plot_pick_error_dist(results)
+tutils.plot_pick_error_dist(results)
 ```
