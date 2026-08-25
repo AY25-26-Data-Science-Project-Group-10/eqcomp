@@ -72,61 +72,12 @@ class EQTransformerConfig(ModelConfig):
 
             return y
     
-    class _CosineTaper:
-        """
-        Exact ObsPy-style cosine taper:
-        Equivalent to st.taper(max_percentage, type='cosine', max_length)
-        """
-        def __init__(self, max_percentage=0.001, max_length=2, key="X"):
-            self.max_percentage = max_percentage
-            self.max_length = max_length
-
-            if isinstance(key, str):
-                self.key = (key, key)
-            else:
-                self.key = key
-
-        def __call__(self, state_dict):
-            x, metadata = state_dict[self.key[0]]
-
-            if isinstance(x, list):
-                x = [self._taper(arr) for arr in x]
-            else:
-                x = self._taper(x)
-
-            state_dict[self.key[1]] = (x, metadata)
-
-        def _taper(self, x):
-            # Convert numpy → torch
-            orig_numpy = isinstance(x, np.ndarray)
-            x_t = torch.tensor(x, dtype=torch.float32) if orig_numpy else x
-
-            n_samples = x_t.shape[-1]
-
-            # ObsPy taper length
-            L = min(int(self.max_percentage * n_samples), self.max_length)
-            if L <= 0:
-                return x  # no taper
-
-            # ObsPy cosine taper: w[n] = 0.5 * (1 - cos(pi*n/L))
-            n = torch.arange(L, device=x_t.device)
-            w = 0.5 * (1 - torch.cos(np.pi * n / L))
-
-            # Apply taper
-            x_t[:, :L] *= w
-            x_t[:, -L:] *= torch.flip(w, dims=(0,))
-
-            return x_t.cpu().numpy() if orig_numpy else x_t
-
-        def __str__(self):
-            return f"ObsPyCosineTaper(max_percentage={self.max_percentage}, max_length={self.max_length})"
-    
     def __init__(self):
         super().__init__()
         self._augs = [ # Based on EQTransformer/core/mseed_predictor.py
                 sbg.Normalize(demean_axis=-1, key='X'), # Remove means channel-wise 
                 sbg.Filter(N=2, Wn=[1.0, 45.0], btype='band', forward_backward=True, axis=-1, key='X'),
-                self._CosineTaper(max_percentage=0.001, max_length=2, key="X"),
+                CosineTaper(max_percentage=0.001, max_length=2, key="X"),
                 sbg.Normalize(amp_norm_axis=-1, amp_norm_type='std', key='X'), # Std normalisaiton
                 sbg.ProbabilisticLabeller(
                         label_columns=ps_phase_dict, 
@@ -205,7 +156,10 @@ class EQCCTConfig(ModelConfig):
             self._phase_dict = s_phase_dict 
         
         self._augs = [
+            sbg.Normalize(demean_axis=-1, key='X'), # Remove means channel-wise
             sbg.Filter(N=2, Wn=[1.0, 45.0], btype='band', forward_backward=True, axis=-1, key='X'),
+            CosineTaper(max_percentage=0.001, max_length=2, key="X"),
+            sbg.Normalize(amp_norm_axis=-1, amp_norm_type='std', eps=EPS, key='X'),
             sbg.ProbabilisticLabeller( # sigma=1 for almost straight vertical line at pick location
                 label_columns=self._phase_dict, model_labels=[self._phase], sigma=20, dim=0, noise_column=False
             ),
@@ -231,3 +185,53 @@ class EQCCTConfig(ModelConfig):
         return loss(y_pred_p_array, y_true_p_array) # BCE Loss inferred from EQCCT github 
     
 # Before implementing new Config classes, need to check if the number of input samples matches that of the dataset (aka 6000 samples)
+
+
+class CosineTaper:
+    """
+    Exact ObsPy-style cosine taper:
+    Equivalent to st.taper(max_percentage, type='cosine', max_length)
+    """
+    def __init__(self, max_percentage=0.001, max_length=2, key="X"):
+        self.max_percentage = max_percentage
+        self.max_length = max_length
+
+        if isinstance(key, str):
+            self.key = (key, key)
+        else:
+            self.key = key
+
+    def __call__(self, state_dict):
+        x, metadata = state_dict[self.key[0]]
+
+        if isinstance(x, list):
+            x = [self._taper(arr) for arr in x]
+        else:
+            x = self._taper(x)
+
+        state_dict[self.key[1]] = (x, metadata)
+
+    def _taper(self, x):
+        # Convert numpy → torch
+        orig_numpy = isinstance(x, np.ndarray)
+        x_t = torch.tensor(x, dtype=torch.float32) if orig_numpy else x
+
+        n_samples = x_t.shape[-1]
+
+        # ObsPy taper length
+        L = min(int(self.max_percentage * n_samples), self.max_length)
+        if L <= 0:
+            return x  # no taper
+
+        # ObsPy cosine taper: w[n] = 0.5 * (1 - cos(pi*n/L))
+        n = torch.arange(L, device=x_t.device)
+        w = 0.5 * (1 - torch.cos(np.pi * n / L))
+
+        # Apply taper
+        x_t[:, :L] *= w
+        x_t[:, -L:] *= torch.flip(w, dims=(0,))
+
+        return x_t.cpu().numpy() if orig_numpy else x_t
+
+    def __str__(self):
+        return f"ObsPyCosineTaper(max_percentage={self.max_percentage}, max_length={self.max_length})"

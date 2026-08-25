@@ -135,8 +135,8 @@ def evaluate_model(model, test_generator, test_dataset, model_name, mae_threshol
                             y_pred = 0
                             error = None
                         else:
-                            error = abs(pred_t - true_t) / SAMPLING_RATE
-                            y_pred = 1 if error <= th else 0
+                            error = (pred_t - true_t) / SAMPLING_RATE
+                            y_pred = 1 if abs(error) <= th else 0
 
                     results.append({
                         "Model": model_name,
@@ -165,8 +165,12 @@ def aggregate_metrics(results):
         f1 = f1_score(y_true, y_pred, zero_division=0)
         coverage = group["Predicted"].sum() / len(group)
         
-        tp_errors = errors[(y_true == 1) & (y_pred == 1)] # Calculate MAE across TPs only   
-        mae = np.nan if len(tp_errors) == 0 else np.nanmean(tp_errors)
+        tp_errors = errors[(y_true == 1) & (y_pred == 1)] # Calculate MAE across TPs only 
+        
+        # Signed bias (mean signed error)
+        bias = np.nan if len(tp_errors) == 0 else np.nanmean(tp_errors)
+        # MAE
+        mae = np.nan if len(tp_errors) == 0 else np.nanmean(np.abs(tp_errors))
 
         fp = np.sum((y_true == 0) & (y_pred == 1))
         fn = np.sum((y_true == 1) & (y_pred == 0))
@@ -184,6 +188,7 @@ def aggregate_metrics(results):
             "F1": f1,
             "Coverage": coverage,
             "MAE": mae,
+            "Bias": bias,
             "TP": tp,
             "TN": tn,
             "FP": fp,
@@ -339,4 +344,89 @@ def generate_metric_report(df_metrics):
                         (df_metrics["Phase"] == phase)]
         print(f"## {event.title()} {phase}-phase picking")
         print(generate_markdown(subset), end="\n\n\n")
+
+
+def plot_pick_error_dist(results: dict, xlim=None, bins=20, fontsize=20):
     
+    df = pd.DataFrame(results)
+
+    # Only keep rows with numeric errors
+    df_nonan = df[df["Error"].notna()].copy()
+    
+    # Model lists
+    all_models = sorted(df_nonan["Model"].unique())
+    models_P = [m for m in all_models if m != "EQCCTS"]   # EQCCTS cannot produce P
+    models_S = [m for m in all_models if m != "EQCCTP"]   # EQCCTP cannot produce S
+
+    event_types = ["earthquakes", "explosions"]
+    phases = ["P", "S"]
+    
+    ncols = max(len(models_P), len(models_S))
+
+    fig, axes = plt.subplots(
+        nrows=len(event_types) * len(phases),   
+        ncols=ncols,         
+        figsize=(8 * ncols, 20),
+        sharex=True,
+        sharey=True
+    )
+     # Apply x-limits only if provided
+    if xlim is not None:
+        if not (isinstance(xlim, tuple) and len(xlim) == 2):
+            raise ValueError("xlim must be a tuple of (xmin, xmax) or None.")
+        plt.xlim(xlim)
+        
+    row_idx = 0
+    for etype in event_types:
+        for phase in phases:
+
+            # Select correct model list
+            models = models_P if phase == "P" else models_S
+            
+            for col_idx, model in enumerate(models):
+
+                ax = axes[row_idx, col_idx]
+                
+                sub = df_nonan[
+                    (df_nonan["Event Type"] == etype) &
+                    (df_nonan["Phase"] == phase) &
+                    (df_nonan["Model"] == model)
+                ]
+
+                if len(sub) == 0:
+                    ax.set_title(f"{etype.capitalize()} — {phase} — {model} (no picks)")
+                    ax.text(0.5, 0.5, "No data", ha="center", va="center")
+                    continue
+                
+                tp_mask = (sub["True"] == 1) & (sub["Predicted"] == 1) # Calculate MAE over TPs only
+                errors = sub["Error"].values[tp_mask]
+
+                # Metrics
+                mae = np.mean(np.abs(errors))
+                sigma = np.std(errors)
+                bias = np.mean(errors)
+
+                # Histogram centered around zero
+                ax.hist(
+                    errors, 
+                    bins=bins,
+                    edgecolor="black",
+                )
+
+                ax.set_title(f"{etype.capitalize()} - {phase} - {model}", fontsize=fontsize)
+                ax.set_xlabel("Picking Error (s)", fontsize=fontsize)
+                ax.set_ylabel("Count", fontsize=fontsize)
+                ax.tick_params(which='both', labelbottom=True, labelleft=True)
+                ax.grid(True, linestyle="--", alpha=0.6)
+                ax.axvline(0.0, color="black", linestyle="--", linewidth=1.5, alpha=0.8)
+                
+                # Annotate metrics
+                ax.text(0.05, 0.90, f"MAE = {mae:.3f}s", transform=ax.transAxes, fontsize=fontsize)
+                ax.text(0.05, 0.80, f"σ = {sigma:.2f}s", transform=ax.transAxes, fontsize=fontsize)
+                ax.text(0.05, 0.70, f"Bias = {bias:.3f}s", transform=ax.transAxes, fontsize=fontsize)
+                ax.text(0.05, 0.60, f"Count = {len(errors)}", transform=ax.transAxes, fontsize=fontsize)
+
+            row_idx += 1
+
+    plt.tight_layout()
+    plt.show()
