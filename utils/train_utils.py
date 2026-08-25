@@ -238,51 +238,85 @@ def test_loop(dataloader, loss_fn, model):
 
     test_loss /= num_batches
     print(f"Test avg loss: {test_loss:>8f} \n")
-    
+
+def run_model(model, sample):
+    # Helper function to run a model forward pass
+    model.to_preferred_device()
+    model.eval()
+    with torch.no_grad():
+        x = torch.tensor(sample["X"]).float().to(model.device).unsqueeze(0)
+        pred = model(x)
+        pred = model.annotate_batch_post(pred, None, model.get_model_args())
+        pred = pred.permute(0, 2, 1).squeeze().detach().numpy()
+    return pred
     
 
-def compare_preds(trained_model, org_model, sample):
-    trained_model.to_preferred_device()
-    org_model.to_preferred_device()
-        
-    trained_model.eval()
-    org_model.eval()
+def compare_preds(sample, trained_models, original_models):
+    """
+    Plot waveform, ground truth labels, and predictions from any number of models.
     
-    fig = plt.figure(figsize=(15, 7))
+    Parameters
+    ----------
+    sample : dict
+        A sample from your dataset containing "X" and "y".
+    trained_models : list
+        List of trained model instances (0 or more).
+    original_models : list
+        List of original model instances (0 or more).
+    """
+
+    n_models = len(trained_models) + len(original_models)
+    total_rows = 2 + n_models
+
+    fig = plt.figure(figsize=(15, 3 * total_rows))
     axs = fig.subplots(
-        4, 1, sharex=True, gridspec_kw={"hspace": 0, "height_ratios": [2,1,2,2]}
+        total_rows, 1, sharex=True,
+        gridspec_kw={"hspace": 0, "height_ratios": [2, 1] + [2] * n_models}
     )
-    for ax in axs[1:]: ax.set_ylim(-0.05, 1.05)
-    
-    # Plot sample waveform
-    axs[0].plot(sample["X"].T, label=["Z", "N", "E"])
-    axs[0].text(0.05, 0.1, "sample waveform", transform=axs[0].transAxes, ha="left", va="top")
-        
-    
-    # Plot ground truth probability labels
-    axs[1].plot(sample["y"].T, label=list(trained_model.labels))
-    axs[1].text(0.05, 0.2, "ground truth label (probability)", transform=axs[1].transAxes, ha="left", va="top")
-    
-    # Plot predictions from trained model
-    with torch.no_grad():
-        x = torch.tensor(sample["X"]).float().to(trained_model.device).unsqueeze(0)
-        pred = trained_model(x) 
-        pred = trained_model.annotate_batch_post(pred, None, trained_model.get_model_args())
-        pred = pred.permute(0, 2, 1).squeeze().detach().numpy()
 
-    axs[2].plot(pred.T, label=list(trained_model.labels))
-    axs[2].text(0.05, 0.1, "trained model pred", transform=axs[2].transAxes, ha="left", va="top")
-    
-    # Plot predictions from original model
-    with torch.no_grad():
-        x = torch.tensor(sample["X"]).float().to(org_model.device).unsqueeze(0)
-        pred = org_model(x) 
-        pred = org_model.annotate_batch_post(pred, None, org_model.get_model_args())
-        pred = pred.permute(0, 2, 1).squeeze().detach().numpy()
-    
-    axs[3].plot(pred.T, label=list(trained_model.labels))
-    axs[3].text(0.05, 0.1, "original model pred", transform=axs[3].transAxes, ha="left", va="top")
-    for ax in axs: ax.legend()
+    # -----------------------------
+    # 1. Plot waveform
+    # -----------------------------
+    axs[0].plot(sample["X"].T, label=["Z", "N", "E"])
+    axs[0].text(0.05, 0.1, "sample waveform", transform=axs[0].transAxes,
+                ha="left", va="top")
+    axs[0].legend()
+
+    # -----------------------------
+    # 2. Plot ground truth labels
+    # -----------------------------
+    axs[1].plot(sample["y"].T)
+    axs[1].text(0.05, 0.2, "ground truth label (probability)",
+                transform=axs[1].transAxes, ha="left", va="top")
+    axs[1].set_ylim(-0.05, 1.05)
+
+    # -----------------------------
+    # 3. Plot predictions from all models
+    # -----------------------------
+    row = 2
+
+    # ---- Trained models ----
+    for model in trained_models:
+        pred = run_model(model, sample)
+        axs[row].plot(pred.T)
+        axs[row].text(0.05, 0.1, f"trained model pred: {model.__class__.__name__}",
+                      transform=axs[row].transAxes, ha="left", va="top")
+        axs[row].set_ylim(-0.05, 1.05)
+        axs[row].legend(list(model.labels))
+        row += 1
+
+    # ---- Original models ----
+    for model in original_models:
+        pred = run_model(model, sample)
+        axs[row].plot(pred.T)
+        axs[row].text(0.05, 0.1, f"original model pred: {model.__class__.__name__}",
+                      transform=axs[row].transAxes, ha="left", va="top")
+        axs[row].set_ylim(-0.05, 1.05)
+        axs[row].legend(list(model.labels))
+        row += 1
+
+    plt.tight_layout()
+    plt.show()
     
     
 def generate_markdown(df_metrics):
