@@ -33,13 +33,15 @@ Some upstream repositories (e.g., EQCCT) do not expose their training pipelines.
 
 ```
 eqcomp/
-    │
-    ├── model_utils.py        # Models bundled with their training configurations
-    ├── train_utils.py        # Utility functions for fine-tuning and evaluation
-    ├── data/                 # Finnish dataset: metadata.csv, waveforms.hdf5 (too big to upload for now)
-    ├── benchmarks/           # Model comparison reports
-    ├── experiments/          # Model, metadata, metrics from finetuning experiments 
-    └── README.md           
+├── benchmarks/    # Model comparison reports
+├── data/          # Finnish dataset: metadata.csv, waveforms.hdf5 (too big to upload for now)
+├── experiments/   # Model artifacts, metadata, metrics from finetuning experiments
+├── utils/
+│   ├── config.py  # File paths, training, and dataset settings
+│   ├── eval.py    # Helper functions for model comparison 
+│   ├── model.py   # Models bundled with their training configurations
+│   └── train.py   # Helper functions for fine-tuning and evaluation
+└── finetune.ipynb # Example notebook for finetuning          
 ```
 
 ## Set up the Python environment (notebooks + scripts)
@@ -66,7 +68,7 @@ pip install -r requirements.txt
 This section details instructions on how to integrate a new Seisbench phase-picking model into EQcomp.
 
 ### 1. Subclass ModelConfig
-In `model_utils.py`, create a new class:
+In `utils/model.py`, create a new class:
 
 ```python
 class MyModelConfig(ModelConfig):
