@@ -17,45 +17,19 @@ from collections import defaultdict
 from tqdm import tqdm
 import pandas as pd
 
+import utils.config as cfg
 from sklearn.metrics import precision_score, recall_score, f1_score
 
-EQDET_DIR = Path("../eqdet")
-EQDET_DATA_DIR = EQDET_DIR / "data"
-
-QKML_EQ_DIR = EQDET_DATA_DIR / "qkml_earthquakes"
-QKML_EX_DIR = EQDET_DATA_DIR / "qkml_explosions"
-
-WAVEFORM_EQ_DIR = EQDET_DATA_DIR / "waveforms_earthquakes_nonoise"
-WAVEFORM_EX_DIR = EQDET_DATA_DIR / "waveforms_explosions_nonoise"
-WAVEFORM_NOISE_DIR = EQDET_DATA_DIR / "waveforms_noise_only"
-
-FILENAME_WINDOWS = "windows.csv"
-FILENAME_EQ_Y = "eq_labels.csv"
-FILENAME_EX_Y = "ex_labels.csv"
-FILENAME_NOISE_Y = "noise_labels.csv"
-
-DIR_METADATA = Path(os.getcwd())
-FILENAME_METADATA = "metadata.csv"
-FILENAME_WAVEFORMS = "waveforms.hdf5"
-
-SAMPLING_RATE = 100
-TRAIN_SPLIT = 0.80
-TEST_SPLIT = 0.10
-
-
-def preprocess_data(config, train_dataset, dev_dataset, test_dataset):
-    train_generator = sbg.GenericGenerator(train_dataset)
-    dev_generator = sbg.GenericGenerator(dev_dataset)
-    test_generator = sbg.GenericGenerator(test_dataset)
-
-    train_generator.add_augmentations(config.get_augs())
-    dev_generator.add_augmentations(config.get_augs())
-    test_generator.add_augmentations(config.get_augs())
-    
-    return train_generator, dev_generator, test_generator
-
-def get_true_pick(sample):
-    return int(np.argmax(sample["y"]))  # true pick time from probability trace
+def run_model(model, sample):
+    # Helper function to run a model forward pass
+    model.to_preferred_device()
+    model.eval()
+    with torch.no_grad():
+        x = torch.tensor(sample["X"]).float().to(model.device).unsqueeze(0)
+        pred = model(x)
+        pred = model.annotate_batch_post(pred, None, model.get_model_args())
+        pred = pred.permute(0, 2, 1).squeeze().detach().numpy()
+    return pred
 
 def get_predicted_pick(prob_trace, threshold=0.1):
     peak_idx = int(np.argmax(prob_trace))
@@ -135,7 +109,7 @@ def evaluate_model(model, test_generator, test_dataset, model_name, mae_threshol
                             y_pred = 0
                             error = None
                         else:
-                            error = (pred_t - true_t) / SAMPLING_RATE
+                            error = (pred_t - true_t) / cfg.SAMPLING_RATE
                             y_pred = 1 if abs(error) <= th else 0
 
                     results.append({
@@ -196,60 +170,6 @@ def aggregate_metrics(results):
         })
 
     return pd.DataFrame(metrics)
-
-
-def train_loop(dataloader, loss_fn, model, optimizer):
-    model.train()
-    size = len(dataloader.dataset)
-    for batch_id, batch in enumerate(dataloader):
-        # Compute prediction and loss
-        x = batch["X"].float().to(model.device)
-        pred_raw = model(x)
-        args = model.get_model_args()
-        args["blinding"] = (0, 0) # Remove blinding that makes leading and trailing samples np.nan
-        pred = model.annotate_batch_post(pred_raw, None, args) # In (batch_size, WIN_LEN, channels=3)
-        pred = pred.permute(0, 2, 1) # Convert to (batch_size, channels=3, WIN_LEN) 
-        loss = loss_fn(pred, batch["y"].to(model.device))
-        
-        # Backpropagation
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        if batch_id % 5 == 0:
-            loss, current = loss.item(), batch_id * batch["X"].shape[0]
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
-
-
-def test_loop(dataloader, loss_fn, model):
-    num_batches = len(dataloader)
-    test_loss = 0
-    model.eval()  # close the model for evaluation
-
-    with torch.no_grad():
-        for batch in dataloader:
-            x = batch["X"].float().to(model.device)
-            pred_raw = model(x)
-            args = model.get_model_args()
-            args["blinding"] = (0, 0) # Remove blinding that makes leading and trailing samples np.nan
-            pred = model.annotate_batch_post(pred_raw, None, args) # In (batch_size, WIN_LEN, channels=3)
-            pred = pred.permute(0, 2, 1) # Convert to (batch_size, channels=3, WIN_LEN)
-            test_loss += loss_fn(pred, batch["y"].to(model.device)).item()
-
-    test_loss /= num_batches
-    print(f"Test avg loss: {test_loss:>8f} \n")
-
-def run_model(model, sample):
-    # Helper function to run a model forward pass
-    model.to_preferred_device()
-    model.eval()
-    with torch.no_grad():
-        x = torch.tensor(sample["X"]).float().to(model.device).unsqueeze(0)
-        pred = model(x)
-        pred = model.annotate_batch_post(pred, None, model.get_model_args())
-        pred = pred.permute(0, 2, 1).squeeze().detach().numpy()
-    return pred
-    
 
 def compare_preds(sample, trained_models, original_models):
     """
