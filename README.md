@@ -35,6 +35,7 @@ Some upstream repositories (e.g., EQCCT) do not expose their training pipelines.
 eqcomp/
 ├── benchmarks/    # Model comparison reports
 ├── data/          # Finnish dataset: metadata.csv, waveforms.hdf5 (too big to upload for now)
+├── docs/          # Documentation
 ├── experiments/   # Model artifacts, metadata, metrics from finetuning experiments
 ├── utils/
 │   ├── config.py  # File paths, training, and dataset settings
