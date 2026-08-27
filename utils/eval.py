@@ -20,19 +20,23 @@ import pandas as pd
 import utils.config as cfg
 from sklearn.metrics import precision_score, recall_score, f1_score
 
-def run_model(model, sample):
+def run_model(model, sample, blinding=False):
     # Helper function to run a model forward pass
     model.to_preferred_device()
     model.eval()
     with torch.no_grad():
         x = torch.tensor(sample["X"]).float().to(model.device).unsqueeze(0)
         pred = model(x)
-        pred = model.annotate_batch_post(pred, None, model.get_model_args())
-        pred = pred.permute(0, 2, 1).squeeze().detach().numpy()
+        args = model.get_model_args()
+        if not blinding:
+            # Avoid masking the first few and trailing samples
+            args["blinding"] = (0, 0) 
+        pred = model.annotate_batch_post(pred, None, args)
+        pred = pred.permute(0, 2, 1).squeeze(0).detach().numpy()
     return pred
 
 def get_predicted_pick(prob_trace, threshold=0.1):
-    peak_idx = int(np.argmax(prob_trace))
+    peak_idx = int(np.nanargmax(prob_trace))
     peak_val = prob_trace[peak_idx]
     return peak_idx if peak_val > threshold else None
 

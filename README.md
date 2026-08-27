@@ -42,6 +42,7 @@ eqcomp/
 │   ├── eval.py    # Helper functions for model comparison 
 │   ├── model.py   # Models bundled with their training configurations
 │   └── train.py   # Helper functions for fine-tuning and evaluation
+├── vis.           # Waveform and model output visualisation dashboard
 └── finetune.ipynb # Example notebook for finetuning          
 ```
 
