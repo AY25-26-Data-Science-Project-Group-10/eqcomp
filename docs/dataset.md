@@ -29,8 +29,10 @@ Noise windows were generated via rejection sampling within 1 Jan to 28 Feb 2025,
 | explosions   |          598 |            7001 | 2025-01-02 09:16:36.816 | 2025-02-28 21:49:44.800 |
 | noise        |            0 |           12716 | 2025-01-02 09:56:04.130 | 2025-02-28 21:44:17.020 |
 
-![Epicentral distances](dataset/dataset_epicentral_dist.png)
+![Epicentral distances](img/dataset_epicentral_dist.png)
 
-![Earthquake depths](dataset/dataset_depth.png)
+![Earthquake depths](img/dataset_depth.png)
 
-![Megnitudes](dataset/dataset_magnitude.png)
+![Megnitudes](img/dataset_magnitude.png)
+
+![Trace channel distribution](img/dataset_instrument.png)
