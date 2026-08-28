@@ -4,7 +4,7 @@ This report describes the Finnish dataset used in EQcomp.
 # Overview
 The Finnish seismic dataset consists of 3-component waveforms stored in `waveforms.hdf5`, along with its metadata in `metadata.csv`. Each waveform is either created by an earthquake or an explosion, or does not measure any event at all. The latter is considered a noise waveform to provide a negative class for model finetuning.
 
-![map](dataset/dataset_map.png)
+![map](img/dataset_map.png)
 
 Almost all waveforms originated from the FN and HE networks, with a small number from UP. The earthquakes and explosions took place in Finland, Sweden, Norway, Estonia, and Russia.
 
