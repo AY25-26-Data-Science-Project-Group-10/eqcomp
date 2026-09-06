@@ -8,79 +8,86 @@ from io import BytesIO
 from pathlib import Path
 import app_utils as autils
 
+# ---------------------------------------------------------
+# Initial setup
+# ---------------------------------------------------------
 st.set_page_config(layout="wide")
 
 # Load samples from data folder
 samples = autils.load_samples()
+
+all_models = sorted({m for s in samples for m in s["predictions"].keys()})
+
+# ---------------------------------------------------------
+# Initialise session states
+# ---------------------------------------------------------
+if "selected_sample" not in st.session_state:
+    st.session_state.selected_sample = None
+
 
 # ---------------------------------------------------------
 # Sidebar — Filters
 # ---------------------------------------------------------
 st.sidebar.title("Filters")
 
+def callback():
+    st.session_state.selected_sample = None
+
 event_type = st.sidebar.selectbox(
-    "Event type",
-    ["earthquakes", "explosions", "noise"]
+    key="event_type",
+    label="Select Event type",
+    options=["earthquakes", "explosions", "noise"],
+    on_change=lambda: st.session_state.update(selected_sample=None),
 )
 
-phase_filter = None
-if event_type != "noise":
-    phase_filter = st.sidebar.selectbox("Phase", ["P", "S", "All"])
 
-all_models = sorted({m for s in samples for m in s["predictions"].keys()})
+phase_filter = st.sidebar.selectbox(
+    key="phase_filter",
+    label="Select phase",
+    options=["P", "S", "No filter"],
+    on_change=lambda: st.session_state.update(selected_sample=None),
+)
+
+
+cf_filter = None
+if phase_filter != "No filter":
+    options = None
+    if event_type == "noise":
+        options = ["No filter", "FP", "TN"]
+    else:
+        options = ["No filter", "TP", "FP", "FN", "TN"]
+        
+    cf_filter = st.sidebar.radio(
+        key="cf_filter",
+        label=f"Confusion-matrix filtering for phase {phase_filter}:",
+        options=options,
+        on_change=lambda: st.session_state.update(selected_sample=None),
+    )
 
 model_filter = st.sidebar.multiselect(
-    "Models",
-    all_models,
-    default=all_models
+    key="model_filter",
+    label="Select model(s)",
+    options=all_models,
+    on_change=lambda: st.session_state.update(selected_sample=None),
+    default=all_models[0]
 )
 
-cf_filter = st.sidebar.radio(
-    "Confusion-matrix filter",
-    ["All", "TP", "FP", "FN", "TN"]
-)
-
-show_non_matching = st.sidebar.checkbox(
-    "Show non-matching model outputs (greyed out)",
-    value=True
+show_all_models = st.sidebar.checkbox(
+    key="show_all_models",
+    label="Show outputs of all models",
+    value=True,
 )
 
 # ---------------------------------------------------------
 # Filter samples by event type
 # ---------------------------------------------------------
 valid_samples = [s for s in samples if 
-                 autils.sample_matches_filters(s, event_type, phase_filter, model_filter, cf_filter)]
+                 autils.sample_matches_filters(s, 
+                                               st.session_state.event_type, 
+                                               st.session_state.phase_filter, 
+                                               st.session_state.model_filter, 
+                                               st.session_state.cf_filter)]
 
-
-# ---------------------------------------------------------
-# Page state: gallery or detailed view
-# ---------------------------------------------------------
-if "selected_sample" not in st.session_state:
-    st.session_state.selected_sample = None
-
-# ---------------------------------------------------------
-# Helper: Generate low-res waveform images preview tile 
-# for faster loading of waveform gallery
-# ---------------------------------------------------------
-def preview_waveform(sample):
-    X = sample["X"]
-    fig = go.Figure()
-    comps = ["Z", "N", "E"]
-
-    for i in range(3):
-        fig.add_trace(go.Scatter(
-            y=X[i],
-            mode="lines",
-            line=dict(width=0.7),
-            name=comps[i]
-        ))
-
-    fig.update_layout(
-        height=150,
-        margin=dict(l=0, r=0, t=20, b=0),
-        showlegend=False
-    )
-    return fig
 
 # ---------------------------------------------------------
 # Helper: build stacked figure (waveform + model traces)
@@ -111,17 +118,19 @@ def build_stacked_figure(sample, models_to_show, sample_height=0.4):
                 y=X[i],
                 mode="lines",
                 name=f"Waveform {comps[i]}",
-                line=dict(width=0.5)
+                line=dict(width=0.5, color=autils.WAVE_COLOURS[i])
             ),
             row=1,
             col=1
         )
+        
+    # Print true picks on top of sample waveforms
     for ph, t in true_picks.items():
-        if not math.isnan(t): # None becomes math.nan in plotly
+        if t is not None and np.isfinite(t): # Handle nan
             fig.add_vline( # Display true picks
                 x=t,
                 line_width=2,
-                line_color="green",
+                line_color=autils.PICK_COLOURS[ph.upper()],
                 annotation_text=f"True {ph}",
                 row=1,
                 col=1
@@ -133,21 +142,19 @@ def build_stacked_figure(sample, models_to_show, sample_height=0.4):
         picks = pred["picks"]
         errors = pred["errors"]
 
-        def grey(color):
-            return "lightgrey" if grey_out else color
-
         # Unique legend group per subplot
         legend_group = f"model_{idx}"
         
         if isinstance(probs, dict):
             for ph, trace in probs.items():
+                line_colour = autils.PROB_COLOURS["UNSELECTED"] if grey_out else autils.PROB_COLOURS[ph.upper()]
                 fig.add_trace(
                     go.Scatter(
                         y=trace,
                         mode="lines",
                         name=f"{model_name} {ph}",
                         showlegend=True,
-                        line=dict(color=grey(autils.PROB_COLOURS.get(ph.upper(), "blue")))
+                        line=dict(color=line_colour)
                     ),
                     row=idx,
                     col=1
@@ -156,6 +163,7 @@ def build_stacked_figure(sample, models_to_show, sample_height=0.4):
             labels = ["N", "P", "S"]
             for i in range(probs.shape[0]):
                 ph = labels[i]
+                line_colour = autils.PROB_COLOURS["UNSELECTED"] if grey_out else autils.PROB_COLOURS[ph.upper()]
                 fig.add_trace(
                     go.Scatter(
                         y=probs[i],
@@ -163,20 +171,26 @@ def build_stacked_figure(sample, models_to_show, sample_height=0.4):
                         name=f"{model_name} {ph} prob",
                         legendgroup=legend_group,
                         showlegend=True,
-                        line=dict(color=grey(autils.PROB_COLOURS[ph]))
+                        line=dict(color=line_colour)
                     ),
                     row=idx,
                     col=1
                 )
-
+        # Print model picks on top of probability traces
         for ph, t in picks.items():
-            if t is not None:
+            if t is not None and np.isfinite(t): # Handle nan
                 error = errors[ph]
+                
+                if error is not None and np.isfinite(t): # Handle nan
+                    annot_text = f"{model_name} {ph}<br>error: {error:3f}s"
+                else:
+                    annot_text = f"{model_name} {ph}"
+                line_colour = autils.PICK_COLOURS["UNSELECTED"] if grey_out else autils.PICK_COLOURS[ph.upper()]
                 fig.add_vline(
                     x=t,
                     line_width=2,
-                    line_color=grey("red"),
-                    annotation_text=f"{model_name} {ph} error:{error:3f}s",
+                    line_color=line_colour,
+                    annotation_text=annot_text,
                     annotation_yshift=-20 if ph =="S" else -40,
                     row=idx,
                     col=1
@@ -196,7 +210,7 @@ if st.session_state.selected_sample is None:
     cols = st.columns(6)
 
     for i, sample in enumerate(valid_samples):
-        thumb = autils.generate_thumbnail(sample["X"])
+        thumb = autils.generate_thumbnail(sample["X"], sample["true_picks"])
 
         with cols[i % 6]:
             st.image(thumb, width='stretch')
@@ -220,20 +234,20 @@ else:
 
     with col2:
         st.write("")   # pushes button down to align visually
-        if st.button("Back to search results", key="back_top"):
+        if st.button("Back to search results", key="back_top", type="primary"):
             st.session_state.selected_sample = None
             st.rerun()
     # Show sample waveform and model output probability traces
-    models_to_show = autils.filter_models(sample, model_filter, phase_filter, cf_filter, show_non_matching)
+    models_to_show = autils.filter_models(sample, model_filter, phase_filter, cf_filter, show_all_models, all_models)
     fig = build_stacked_figure(sample, models_to_show)
-    st.plotly_chart(fig, use_container_width=True)
-    
+    st.plotly_chart(fig, width='stretch')
+
     # Show metadata table
     metadata_dict = {field: sample.get(field, "N/A") for field in autils.metadata_fields}
     st.subheader("Sample metadata")
     st.table(metadata_dict)
 
     # Back button
-    if st.button("Back to search results", key="back_bottom"):
+    if st.button("Back to search results", key="back_bottom", type="primary"):
         st.session_state.selected_sample = None
         st.rerun()
