@@ -103,18 +103,41 @@ def evaluate_model(model, test_generator, test_dataset, model_name, mae_threshol
                 ("S", true_S, pred_S)
             ]:
                 for th in mae_thresholds:
-                    if event_type == "noise":
-                        y_true = 0
-                        y_pred = 1 if pred_t is not None else 0
-                        error = None
+                    
+                    y_true = None
+                    # Compute error if possible
+                    if pred_t is not None and true_t is not None:
+                        error = (pred_t - true_t) / cfg.SAMPLING_RATE
                     else:
-                        y_true = 1
-                        if pred_t is None:
+                        error = None
+                    
+                    # Case: sample has no true picks for that phase
+                    if true_t is None or not np.isfinite(true_t):
+                        y_true = 0
+                        if pred_t is None or not np.isfinite(pred_t):
+                            # TN
                             y_pred = 0
-                            error = None
                         else:
-                            error = (pred_t - true_t) / cfg.SAMPLING_RATE
-                            y_pred = 1 if abs(error) <= th else 0
+                            # FP (prediction far from any true pick)
+                            y_pred = 1
+
+                    # Case: sample has true picks for that phase
+                    else:
+                        # True pick exists
+                        y_true = 1
+
+                        if pred_t is None or not np.isfinite(pred_t):
+                            # FN (no predictions made at all)
+                            y_pred = 0
+                        else:
+                            # Model predicted something → check tolerance
+                            if abs(error) <= th:
+                                # TP (correct pick)
+                                y_pred = 1
+                            else:
+                                # FP (prediction far from true pick)
+                                y_true = 0   # correct pick does not exist
+                                y_pred = 1    
 
                     results.append({
                         "Model": model_name,

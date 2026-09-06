@@ -15,37 +15,37 @@ The validation (dev) split was used for this report.
 ## Earthquakes P-phase picking
 | Model         | Event Type   | Phase   |   Threshold |   Count | Precision   | Recall    | F1        | Coverage   | MAE       |         Bias |   TP |   TN |   FP |   FN |
 |:--------------|:-------------|:--------|------------:|--------:|:------------|:----------|:----------|:-----------|:----------|-------------:|-----:|-----:|-----:|-----:|
-| EQCCTP        | earthquakes  | P       |         0.2 |     288 | **1.000**   | 0.215     | 0.354     | 0.215      | **0.054** |   0.00320385 |   62 |    0 |    0 |  226 |
-| EQCCTS        | earthquakes  | P       |         0.2 |     288 | 0.000       | 0.000     | 0.000     | 0.000      | nan       | nan          |    0 |    0 |    0 |  288 |
-| EQTransformer | earthquakes  | P       |         0.2 |     288 | **1.000**   | **0.278** | **0.435** | **0.278**  | 0.059     |  -0.0177636  |   80 |    0 |    0 |  208 |
-| PhaseNet      | earthquakes  | P       |         0.2 |     288 | **1.000**   | 0.215     | 0.354     | 0.215      | 0.080     |   0.067258   |   62 |    0 |    0 |  226 |
+| EQCCTP        | earthquakes  | P       |         0.2 |     288 | **0.697**   | 0.339     | 0.456     | 0.309      | **0.054** |   0.00320385 |   62 |   78 |   27 |  121 |
+| EQCCTS        | earthquakes  | P       |         0.2 |     288 | 0.000       | 0.000     | 0.000     | 0.000      | nan       | nan          |    0 |   90 |    0 |  198 |
+| EQTransformer | earthquakes  | P       |         0.2 |     288 | 0.684       | **0.471** | **0.557** | **0.406**  | 0.059     |  -0.0177636  |   80 |   81 |   37 |   90 |
+| PhaseNet      | earthquakes  | P       |         0.2 |     288 | 0.574       | 0.383     | 0.459     | 0.375      | 0.080     |   0.067258   |   62 |   80 |   46 |  100 |
 
 
 ## Earthquakes S-phase picking
 | Model         | Event Type   | Phase   |   Threshold |   Count | Precision   | Recall    | F1        | Coverage   | MAE       |        Bias |   TP |   TN |   FP |   FN |
 |:--------------|:-------------|:--------|------------:|--------:|:------------|:----------|:----------|:-----------|:----------|------------:|-----:|-----:|-----:|-----:|
-| EQCCTP        | earthquakes  | S       |         0.2 |     288 | 0.000       | 0.000     | 0.000     | 0.000      | nan       | nan         |    0 |    0 |    0 |  288 |
-| EQCCTS        | earthquakes  | S       |         0.2 |     288 | **1.000**   | **0.191** | **0.321** | **0.191**  | **0.074** |   0.0443978 |   55 |    0 |    0 |  233 |
-| EQTransformer | earthquakes  | S       |         0.2 |     288 | **1.000**   | **0.191** | **0.321** | **0.191**  | **0.074** |   0.0439423 |   55 |    0 |    0 |  233 |
-| PhaseNet      | earthquakes  | S       |         0.2 |     288 | **1.000**   | 0.094     | 0.171     | 0.094      | 0.082     |   0.0756918 |   27 |    0 |    0 |  261 |
+| EQCCTP        | earthquakes  | S       |         0.2 |     288 | 0.000       | 0.000     | 0.000     | 0.000      | nan       | nan         |    0 |    1 |    0 |  287 |
+| EQCCTS        | earthquakes  | S       |         0.2 |     288 | 0.410       | **0.264** | **0.322** | **0.465**  | **0.074** |   0.0443978 |   55 |    1 |   79 |  153 |
+| EQTransformer | earthquakes  | S       |         0.2 |     288 | **0.474**   | 0.243     | **0.322** | 0.403      | **0.074** |   0.0439423 |   55 |    1 |   61 |  171 |
+| PhaseNet      | earthquakes  | S       |         0.2 |     288 | 0.239       | 0.134     | 0.172     | 0.392      | 0.082     |   0.0756918 |   27 |    1 |   86 |  174 |
 
 
 ## Explosions P-phase picking
 | Model         | Event Type   | Phase   |   Threshold |   Count | Precision   | Recall    | F1        | Coverage   | MAE       |         Bias |   TP |   TN |   FP |   FN |
 |:--------------|:-------------|:--------|------------:|--------:|:------------|:----------|:----------|:-----------|:----------|-------------:|-----:|-----:|-----:|-----:|
-| EQCCTP        | explosions   | P       |         0.2 |     699 | **1.000**   | 0.143     | 0.250     | 0.143      | 0.081     |  -0.00940301 |  100 |    0 |    0 |  599 |
-| EQCCTS        | explosions   | P       |         0.2 |     699 | 0.000       | 0.000     | 0.000     | 0.000      | nan       | nan          |    0 |    0 |    0 |  699 |
-| EQTransformer | explosions   | P       |         0.2 |     699 | **1.000**   | 0.182     | 0.308     | 0.182      | 0.090     |  -0.0300877  |  127 |    0 |    0 |  572 |
-| PhaseNet      | explosions   | P       |         0.2 |     699 | **1.000**   | **0.185** | **0.312** | **0.185**  | **0.078** |   0.0505174  |  129 |    0 |    0 |  570 |
+| EQCCTP        | explosions   | P       |         0.2 |     699 | **0.588**   | 0.195     | 0.293     | 0.243      | 0.081     |  -0.00940301 |  100 |  116 |   70 |  413 |
+| EQCCTS        | explosions   | P       |         0.2 |     699 | 0.000       | 0.000     | 0.000     | 0.000      | nan       | nan          |    0 |  124 |    0 |  575 |
+| EQTransformer | explosions   | P       |         0.2 |     699 | 0.502       | 0.273     | 0.353     | 0.362      | 0.090     |  -0.0300877  |  127 |  107 |  126 |  339 |
+| PhaseNet      | explosions   | P       |         0.2 |     699 | 0.496       | **0.281** | **0.359** | **0.372**  | **0.078** |   0.0505174  |  129 |  109 |  131 |  330 |
 
 
 ## Explosions S-phase picking
 | Model         | Event Type   | Phase   |   Threshold |   Count | Precision   | Recall    | F1        | Coverage   | MAE       |         Bias |   TP |   TN |   FP |   FN |
 |:--------------|:-------------|:--------|------------:|--------:|:------------|:----------|:----------|:-----------|:----------|-------------:|-----:|-----:|-----:|-----:|
-| EQCCTP        | explosions   | S       |         0.2 |     699 | 0.000       | 0.000     | 0.000     | 0.000      | nan       | nan          |    0 |    0 |    0 |  699 |
-| EQCCTS        | explosions   | S       |         0.2 |     699 | **1.000**   | **0.134** | **0.237** | **0.134**  | **0.093** |   0.00244148 |   94 |    0 |    0 |  605 |
-| EQTransformer | explosions   | S       |         0.2 |     699 | **1.000**   | 0.096     | 0.175     | 0.096      | 0.097     |   0.00644075 |   67 |    0 |    0 |  632 |
-| PhaseNet      | explosions   | S       |         0.2 |     699 | **1.000**   | 0.072     | 0.134     | 0.072      | 0.107     |   0.076482   |   50 |    0 |    0 |  649 |
+| EQCCTP        | explosions   | S       |         0.2 |     699 | 0.000       | 0.000     | 0.000     | 0.000      | nan       | nan          |    0 |   76 |    0 |  623 |
+| EQCCTS        | explosions   | S       |         0.2 |     699 | **0.336**   | **0.208** | **0.257** | **0.401**  | **0.093** |   0.00244148 |   94 |   61 |  186 |  358 |
+| EQTransformer | explosions   | S       |         0.2 |     699 | 0.316       | 0.136     | 0.191     | 0.303      | 0.097     |   0.00644075 |   67 |   63 |  145 |  424 |
+| PhaseNet      | explosions   | S       |         0.2 |     699 | 0.234       | 0.105     | 0.145     | 0.306      | 0.107     |   0.076482   |   50 |   61 |  164 |  424 |
 
 
 ## Noise P-phase picking
@@ -65,13 +65,12 @@ The validation (dev) split was used for this report.
 | EQTransformer | noise        | S       |         0.2 |    1278 |           0 |        0 |    0 | 0.002      |   nan |    nan |    0 | 1276 |    2 |    0 |
 | PhaseNet      | noise        | S       |         0.2 |    1278 |           0 |        0 |    0 | 0.025      |   nan |    nan |    0 | 1246 |   32 |    0 |
 
-
 ## Pick Errors
 
 ![pick_errors](pretrained-pick_errors.png)
 
 ## Conclusion
-At a threshold of 0.2s, **EQTransformer** outperforms the other models in earthquake P and S-picking. For other event-type-phase splits, it was was the second-best model whose performance was almost identical to the best model, save for explosion S-picks where there is a significant gap with the best model, EQCCT. At the moment, **EQTransformer** seems to be the ideal candidate for finetuning.
+At a threshold of 0.2s, **EQTransformer** as-is is the phase picker for earthquakes. For explosions, it is comparable to the best model at P phase picking, but is a far second place from the best model at picking S waves. At noise, all models performed similarly at avoiding false positives. At the moment, **EQTransformer** seems to be the ideal candidate for finetuning.
 
 Caveat: Phasenet was trained on windows of 3001 samples but in this benchmarking, it carried out inference on waveforms of 6000 samples which could explain poorer performance.
 

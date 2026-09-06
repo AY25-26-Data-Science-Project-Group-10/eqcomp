@@ -24,6 +24,8 @@ FILENAME_METADATA = "metadata.csv"
 FILENAME_WAVEFORMS = "waveforms.hdf5"
 FILENAME_STATIONS = "stations.xml"
 
+DIR_VIS = Path(os.getcwd()) / "vis"
+
 FILENAME_MODEL = "model.pth"
 
 SAMPLING_RATE = 100
