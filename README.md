@@ -25,9 +25,10 @@ EQComp accelerates environment configuration by adopting SeisBench’s standardi
 ### 2. Fine-tuning support for all models
 Some upstream repositories (e.g., EQCCT) do not expose their training pipelines. EQComp reconstructs these pipelines by using SeisBench’s interface, which provides direct, low-level access to the Pytorch implementation of the models.
 
-### 3. Visualisation dashboard 
+### 3. Waveform dashboard
 
 EQcomp comes with an interactive Streamlit dashboard for comparing model outputs. Users can view sample waveforms and model probability traces side-by-side. A search filter allows the users to choose which waveforms to display, based on event type, phase, model type, and confusion matrix metrics (TP, FP, FN, TN). The dashboard runs locally. 
+
 
 ## Repository Structure
 
@@ -93,6 +94,11 @@ cd eqcomp\vis
 ```bash
 streamlit run app.py
 ```
+## Waveform Dashboard
+The dashboard runs locally.
+![waveform gallery](docs/img/vis_waveform_gallery.png)
+
+![detailed view](docs/img/vis_detailed_view.png)
 
 
 ## Adding a New Model to EQComp
