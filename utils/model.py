@@ -98,6 +98,12 @@ class EQTransformerConfig(ModelConfig):
     def get_model_class(self):
         return sbm.EQTransformer   
     
+    def load_finetuned_model(self, model_path : str):
+        model = sbm.EQTransformer.from_pretrained("original")   # instantiate empty model
+        state_dict = torch.load(model_path, map_location="cpu")
+        model.load_state_dict(state_dict)
+        return model  
+    
     @staticmethod
     def loss_fn(y_pred_p_array, y_true_p_array):
         loss = torch.nn.BCELoss()
